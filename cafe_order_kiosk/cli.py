@@ -7,6 +7,7 @@ from cafe_order_kiosk.models import OrderStatus
 from cafe_order_kiosk.kiosk_store import KioskStore
 from cafe_order_kiosk.utils import format_money
 
+from cafe_order_kiosk.admin import AdminManager
 
 @dataclass
 class CLIState:
@@ -16,13 +17,15 @@ class CLIState:
 def run_cli() -> int:
     store = KioskStore.with_default_menu()
     state = CLIState()
+    admin_manager = AdminManager()  #관리자 세션 제어 인스턴스 생성
 
     print("카페 주문 키오스크")
     print("명령어 목록은 '도움말'을 입력하세요. 가격은 원 단위 정수입니다.")
 
     while True:
         try:
-            raw = input("kiosk> ").strip()
+            prompt = "admin> " if admin_manager.is_admin_mode else "kiosk> " #현재 세션 상태에 따라 프롬프트 문구 스위치 
+            raw = input(prompt).strip()
         except (EOFError, KeyboardInterrupt):
             print()
             break
@@ -32,6 +35,24 @@ def run_cli() -> int:
 
         tokens = shlex.split(raw)
         command, args = tokens[0], tokens[1:]
+
+        if admin_manager.is_admin_mode:
+            if command in {"로그아웃", "logout"}:
+                admin_manager.logout()
+            elif command in {"매출조회", "sales"}:
+                admin_manager.show_sales_summary(store)
+            elif command in {"비번변경", "password"}:
+                admin_manager.change_password()
+            elif command in {"영수증", "receipt"}:
+                if not args:
+                    print("사용법: 영수증 <주문_id>")
+                else:
+                    admin_manager.reprint_receipt(store, args[0])
+            elif command in {"종료", "끝", "quit", "exit"}:
+                break
+            else:
+                print("알 수 없는 관리자 명령입니다. [매출조회, 비번변경, 영수증 <ID>, 로그아웃] 중에서 입력하세요.")
+            continue  # 관리자 명령 처리가 끝나면 아래 일반 kiosk 명령어 진입을 막고 루프 처음으로 리턴
 
         if command in {"종료", "끝", "quit", "exit"}:
             break
@@ -45,6 +66,14 @@ def run_cli() -> int:
             handle_orders(store, args)
         elif command in {"결제", "pay"}:
             handle_pay(store, state, args)
+
+        elif command in {"관리자", "admin"}:
+            input_pw = input("관리자 비밀번호를 입력하세요: ").strip()
+            if admin_manager.check_password(input_pw):
+                print("\n 관리자 인증 성공! 관리자 셸 환경으로 진입합니다.")
+                print("[명령어]: 매출조회 | 비번변경 | 영수증 <주문_id> | 로그아웃")
+            else:
+                print("비밀번호가 올바르지 않습니다. 보안을 위해 홈화면으로 튕겨 나갑니다.")
         else:
             print("알 수 없는 명령입니다. '도움말'을 입력하세요.")
     print("종료합니다.")
