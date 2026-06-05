@@ -5,23 +5,26 @@ from collections.abc import Iterable
 from cafe_order_kiosk.models import MenuItem, Order, OrderItem, OrderStatus, Payment
 from cafe_order_kiosk.utils import utc_now
 
+# 메뉴 이름 4개 국어(ko,en,ch,ja)로 확장
 DEFAULT_MENU: tuple[MenuItem, ...] = (
-    MenuItem(id=1, name="Americano", price=3500, category="coffee"),
-    MenuItem(id=2, name="Latte", price=4000, category="coffee"),
-    MenuItem(id=3, name="Cappuccino", price=4200, category="coffee"),
-    MenuItem(id=4, name="Cold Brew", price=4500, category="coffee"),
-    MenuItem(id=5, name="Matcha Latte", price=4800, category="tea"),
-    MenuItem(id=6, name="Chamomile Tea", price=3800, category="tea"),
-    MenuItem(id=7, name="Lemonade", price=4200, category="juice"),
-    MenuItem(id=8, name="Butter Croissant", price=3500, category="bakery"),
-    MenuItem(id=9, name="Blueberry Muffin", price=3200, category="bakery"),
-    MenuItem(id=10, name="Cheesecake", price=5200, category="dessert"),
+    MenuItem(id=1, name={"ko": "아메리카노", "en": "Americano", "ch": "美式咖啡", "ja": "アメリカーノ"}, price=3500, category="coffee"),
+    MenuItem(id=2, name={"ko": "카페라떼", "en": "Latte", "ch": "拿铁咖啡", "ja": "カフェラテ"}, price=4000, category="coffee"),
+    MenuItem(id=3, name={"ko": "카푸치노", "en": "Cappuccino", "ch": "卡布奇诺", "ja": "カプチーノ"}, price=4200, category="coffee"),
+    MenuItem(id=4, name={"ko": "콜드브루", "en": "Cold Brew", "ch": "冷萃咖啡", "ja": "コールドブリュー"}, price=4500, category="coffee"),
+    MenuItem(id=5, name={"ko": "말차라떼", "en": "Matcha Latte", "ch": "抹茶拿铁", "ja": "抹茶ラテ"}, price=4800, category="tea"),
+    MenuItem(id=6, name={"ko": "캐모마일티", "en": "Chamomile Tea", "ch": "洋甘菊茶", "ja": "カモミールティー"}, price=3800, category="tea"),
+    MenuItem(id=7, name={"ko": "레몬에이드", "en": "Lemonade", "ch": "柠檬水", "ja": "レモネード"}, price=4200, category="juice"),
+    MenuItem(id=8, name={"ko": "버터 크로와상", "en": "Butter Croissant", "ch": "牛角面包", "ja": "クロワッサン"}, price=3500, category="bakery"),
+    MenuItem(id=9, name={"ko": "블루베리 머핀", "en": "Blueberry Muffin", "ch": "蓝莓 maifen", "ja": "ブルーベリーマフィン"}, price=3200, category="bakery"),
+    MenuItem(id=10, name={"ko": "치즈케이크", "en": "Cheesecake", "ch": "芝士蛋糕", "ja": "チーズケーキ"}, price=5200, category="dessert"),
 )
 
 
 class KioskStore:
     def __init__(self, menu_items: Iterable[MenuItem] | None = None) -> None:
-        self._menu: dict[int, MenuItem] = {item.id: item for item in (menu_items or [])}
+        self._menu: dict[int, MenuItem] = {}
+        for item in (menu_items or []):
+            self._menu[item.id] = item
         self._orders: dict[int, Order] = {}
         self._next_order_id = 1
 
@@ -73,6 +76,9 @@ class KioskStore:
             raise ValueError("Menu item not found")
         if not menu_item.is_available:
             raise ValueError("Menu item is not available")
+        
+        # 주문 목록에 담길 때 현재 설정된 언어 버전에 맞춰 출력
+        item_name = menu_item.name["ko"] if isinstance(menu_item.name, dict) else menu_item.name
 
         order_item = OrderItem(
             menu_item_id=menu_item.id,

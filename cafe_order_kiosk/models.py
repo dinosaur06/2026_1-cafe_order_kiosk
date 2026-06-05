@@ -16,7 +16,7 @@ class OrderStatus(str, Enum):
 @dataclass(frozen=True)
 class MenuItem:
     id: int
-    name: str
+    name: dict[str, str] | str  # 다국어 딕셔너리 수용
     price: int
     category: str | None = None
     description: str | None = None
@@ -26,7 +26,7 @@ class MenuItem:
 @dataclass
 class OrderItem:
     menu_item_id: int
-    name: str
+    name: dict[str, str] | str
     unit_price: int
     quantity: int
     options: list[str] = field(default_factory=list)
